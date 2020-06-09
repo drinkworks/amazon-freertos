@@ -22,7 +22,7 @@
 [submodule "vendors/espressif/esp-idf"]
 	path = vendors/espressif/esp-idf
 	url = https://github.com/drinkworks/esp-afr-sdk.git
-	branch = release/v3.3
+	branch = dw_esp_idf_fork_edits
 [submodule "mbedtls"]
 	path = libraries/3rdparty/mbedtls
 	url = https://github.com/ARMmbed/mbedtls.git
