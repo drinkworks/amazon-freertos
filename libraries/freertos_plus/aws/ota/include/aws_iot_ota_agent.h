@@ -42,6 +42,9 @@
 #include "FreeRTOS.h"
 #include "timers.h"
 
+/* IoT configuration can override the default OTA_DEBUG_LOG_LEVEL */
+#include "iot_config.h"
+
 /* Evaluates to the length of a constant string defined like 'static const char str[]= "xyz"; */
 #define CONST_STRLEN( s )    ( ( ( uint32_t ) sizeof( s ) ) - 1UL )
 
@@ -52,7 +55,10 @@ extern const char cOTA_JSON_FileSignatureKey[ OTA_FILE_SIG_KEY_STR_MAX_LENGTH ];
 /**
  * @brief Special OTA Agent printing definition.
  */
-#define OTA_DEBUG_LOG_LEVEL    1
+#ifndef OTA_DEBUG_LOG_LEVEL
+	#define OTA_DEBUG_LOG_LEVEL    1
+#endif
+
 #if OTA_DEBUG_LOG_LEVEL >= 1
     #define DEFINE_OTA_METHOD_NAME( name )      \
     static const char OTA_METHOD_NAME[] = name; \
