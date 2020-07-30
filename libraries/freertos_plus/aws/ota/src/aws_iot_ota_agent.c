@@ -114,10 +114,6 @@ static OTA_ControlInterface_t xOTA_ControlInterface;
 
 static OTA_DataInterface_t xOTA_DataInterface;
 
-/* Guard against destroyed connection */
-
-static void *	pCurrentMQTT_OTA_Connection = 0;
-
 /*
  * Test a null terminated string against a JSON string of known length and return whether
  * it is the same or not.
@@ -2315,11 +2311,7 @@ static void prvAgentShutdownCleanup( void )
     /* Cleanup related to selected protocol. */
     if( xOTA_DataInterface.prvCleanup != NULL )
     {
-    	// Additional guard against free'd mqtt connections
-    	// Allow cleanup if the current MQTT connection hasn't been set or the current connection equals the connection context of the OTA agent
-    	if(pCurrentMQTT_OTA_Connection == NULL || pCurrentMQTT_OTA_Connection == xOTA_Agent.pvConnectionContext){
-    		xOTA_DataInterface.prvCleanup( &xOTA_Agent );
-    	}
+        xOTA_DataInterface.prvCleanup( &xOTA_Agent );
     }
 
     /*
@@ -2478,9 +2470,6 @@ OTA_State_t OTA_AgentInit( void * pvConnectionContext,
     DEFINE_OTA_METHOD_NAME( "OTA_AgentInit" );
 
     OTA_State_t xState;
-
-    // Set the pointer for the current MQTT agent. This is used to guard against a free'd pointer
-    pCurrentMQTT_OTA_Connection = ((OTA_ConnectionContext_t *) pvConnectionContext)->pvControlClient;
 
     if( xOTA_Agent.eState == eOTA_AgentState_Stopped )
     {
