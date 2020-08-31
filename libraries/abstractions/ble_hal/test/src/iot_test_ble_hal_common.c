@@ -1,5 +1,5 @@
 /*
- * FreeRTOS BLE HAL V4.0.1
+ * FreeRTOS BLE HAL V5.0.0
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -253,8 +253,8 @@ BTGattAdvertismentParams_t xAdvertisementConfigA =
     .ucName                       = { BTGattAdvNameNone,               0},
     .bSetScanRsp                  = false,
     .ulAppearance                 = 0,
-    .ulMinInterval                = bletestsMIN_CONNECTION_INTERVAL,
-    .ulMaxInterval                = bletestsMAX_CONNECTION_INTERVAL,
+    .ulMinInterval                = 0,
+    .ulMaxInterval                = 0,
     .usMinAdvInterval             = bletestsMIN_ADVERTISEMENT_INTERVAL,
     .usMaxAdvInterval             = bletestsMAX_ADVERTISEMENT_INTERVAL,
     .ucChannelMap                 = 0,

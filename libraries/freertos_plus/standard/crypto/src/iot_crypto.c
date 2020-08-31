@@ -1,5 +1,5 @@
 /*
- * FreeRTOS Crypto V1.0.8
+ * FreeRTOS Crypto V1.1.0
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,6 @@
 
 /* FreeRTOS includes. */
 #include "FreeRTOS.h"
-#include "FreeRTOSIPConfig.h"
 #include "iot_crypto.h"
 
 /* mbedTLS includes. */
@@ -50,7 +49,7 @@
 
 
 
-#define CRYPTO_PRINT( X )    vLoggingPrintf X
+#define CRYPTO_PRINT( X )    configPRINTF( X )
 
 /**
  * @brief Internal signature verification context structure

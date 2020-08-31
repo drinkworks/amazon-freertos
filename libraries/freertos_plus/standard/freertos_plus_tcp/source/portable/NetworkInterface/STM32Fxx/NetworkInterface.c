@@ -4,7 +4,7 @@
  */
 
 /*
-FreeRTOS+TCP V2.0.11
+FreeRTOS+TCP V2.3.0
 Copyright (C) 2017 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -828,7 +828,7 @@ const ProtocolPacket_t *pxProtPacket = ( const ProtocolPacket_t * )pcBuffer;
 			#endif
 				) {
 				/* Drop this packet, not for this device. */
-				FreeRTOS_printf( ( "Drop: UDP port %d -> %d\n", usSourcePort, usDestinationPort ) );
+				/* FreeRTOS_printf( ( "Drop: UDP port %d -> %d\n", usSourcePort, usDestinationPort ) ); */
 				return pdFALSE;
 			}
 		}
@@ -1178,9 +1178,9 @@ BaseType_t xReturn;
 void vNetworkInterfaceAllocateRAMToBuffers( NetworkBufferDescriptor_t pxNetworkBuffers[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS ] )
 {
 static
-#if defined(STM32F7xx)
-	__attribute__ ((section(".first_data")))
-#endif
+	#if defined(STM32F7xx)
+		__attribute__ ((section(".first_data")))
+	#endif
 	uint8_t ucNetworkPackets[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS * ETH_MAX_PACKET_SIZE ] __attribute__ ( ( aligned( 32 ) ) );
 uint8_t *ucRAMBuffer = ucNetworkPackets;
 uint32_t ul;
@@ -1196,10 +1196,6 @@ uint32_t ul;
 
 static void prvEMACHandlerTask( void *pvParameters )
 {
-UBaseType_t uxLastMinBufferCount = 0;
-#if( ipconfigCHECK_IP_QUEUE_SPACE != 0 )
-UBaseType_t uxLastMinQueueSpace = 0;
-#endif
 UBaseType_t uxCurrentCount;
 BaseType_t xResult;
 const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( 100UL );
@@ -1210,15 +1206,11 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( 100UL );
 	for( ;; )
 	{
 		xResult = 0;
-		uxCurrentCount = uxGetMinimumFreeNetworkBuffers();
-		if( uxLastMinBufferCount != uxCurrentCount )
-		{
-			/* The logging produced below may be helpful
-			while tuning +TCP: see how many buffers are in use. */
-			uxLastMinBufferCount = uxCurrentCount;
-			FreeRTOS_printf( ( "Network buffers: %lu lowest %lu\n",
-				uxGetNumberOfFreeNetworkBuffers(), uxCurrentCount ) );
-		}
+
+		/* Call a function that monitors resources: the amount of free network
+		buffers and the amount of free space on the heap.  See FreeRTOS_IP.c
+		for more detailed comments. */
+		vPrintResourceStats();
 
 		if( xTXDescriptorSemaphore != NULL )
 		{
@@ -1232,19 +1224,6 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( 100UL );
 			}
 
 		}
-
-		#if( ipconfigCHECK_IP_QUEUE_SPACE != 0 )
-		{
-			uxCurrentCount = uxGetMinimumIPQueueSpace();
-			if( uxLastMinQueueSpace != uxCurrentCount )
-			{
-				/* The logging produced below may be helpful
-				while tuning +TCP: see how many buffers are in use. */
-				uxLastMinQueueSpace = uxCurrentCount;
-				FreeRTOS_printf( ( "Queue space: lowest %lu\n", uxCurrentCount ) );
-			}
-		}
-		#endif /* ipconfigCHECK_IP_QUEUE_SPACE */
 
 		if( ( ulISREvents & EMAC_IF_ALL_EVENT ) == 0 )
 		{

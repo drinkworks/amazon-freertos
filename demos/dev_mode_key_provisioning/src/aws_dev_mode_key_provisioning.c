@@ -1,5 +1,5 @@
 /*
- * FreeRTOS V202002.00
+ * FreeRTOS V202007.00
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -747,7 +747,7 @@ CK_RV xDestroyProvidedObjects( CK_SESSION_HANDLE xSession,
         pxLabel = ppxPkcsLabels[ uiIndex ];
 
         xResult = xFindObjectWithLabelAndClass( xSession,
-                                                ( const char * ) pxLabel,
+                                                ( char * ) pxLabel,
                                                 xClass[ uiIndex ],
                                                 &xObjectHandle );
 
@@ -762,7 +762,7 @@ CK_RV xDestroyProvidedObjects( CK_SESSION_HANDLE xSession,
             if( xResult == CKR_OK )
             {
                 xResult = xFindObjectWithLabelAndClass( xSession,
-                                                        ( const char * ) pxLabel,
+                                                        ( char * ) pxLabel,
                                                         xClass[ uiIndex ],
                                                         &xObjectHandle );
             }

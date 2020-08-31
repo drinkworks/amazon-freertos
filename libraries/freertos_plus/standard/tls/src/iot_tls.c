@@ -1,5 +1,5 @@
 /*
- * FreeRTOS TLS V1.1.7
+ * FreeRTOS TLS V1.2.0
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -137,7 +137,7 @@ typedef struct TLSContext
 #define TLS_HANDSHAKE_STARTED        ( 1 )
 #define TLS_HANDSHAKE_SUCCESSFUL     ( 2 )
 
-#define TLS_PRINT( X )    vLoggingPrintf X
+#define TLS_PRINT( X )    configPRINTF( X )
 
 /*-----------------------------------------------------------*/
 
@@ -443,7 +443,7 @@ static int prvPrivateKeySigningCallback( void * pvContext,
  * @return Zero on success.
  */
 static int prvReadCertificateIntoContext( TLSContext_t * pxTlsContext,
-                                          const char * pcLabelName,
+                                          char * pcLabelName,
                                           CK_OBJECT_CLASS xClass,
                                           mbedtls_x509_crt * pxCertificateContext )
 {

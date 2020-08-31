@@ -1,5 +1,5 @@
 /*
- * FreeRTOS Utils V1.1.2
+ * FreeRTOS Utils V1.1.3
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -67,8 +67,8 @@
  * \return 0 on success, -1 on failure.
  */
 /* @[declare_pkcs11_utils_pkimbedtlssignaturetopkcs11signature] */
-int PKI_mbedTLSSignatureToPkcs11Signature( uint8_t * pxSignaturePKCS,
-                                           uint8_t * pxMbedSignature );
+BaseType_t PKI_mbedTLSSignatureToPkcs11Signature( uint8_t * pxSignaturePKCS,
+                                                  const uint8_t * pxMbedSignature );
 /* @[declare_pkcs11_utils_pkimbedtlssignaturetopkcs11signature] */
 
 
@@ -96,7 +96,7 @@ int PKI_mbedTLSSignatureToPkcs11Signature( uint8_t * pxSignaturePKCS,
  *
  */
 /* @[declare_pkcs11_utils_pkipkcs11signaturetombedtlssignature] */
-int PKI_pkcs11SignatureTombedTLSSignature( uint8_t * pucSig,
-                                           size_t * pxSigLen );
+BaseType_t PKI_pkcs11SignatureTombedTLSSignature( uint8_t * pucSig,
+                                                  size_t * pxSigLen );
 /* @[declare_pkcs11_utils_pkipkcs11signaturetombedtlssignature] */
 #endif /* ifndef _IOT_PKI_UTILS_H_ */

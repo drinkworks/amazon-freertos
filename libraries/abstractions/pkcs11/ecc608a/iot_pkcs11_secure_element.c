@@ -1,5 +1,5 @@
 /*
- * FreeRTOS PKCS#11 V1.0.8
+ * FreeRTOS PKCS #11 V2.1.0
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -299,7 +299,6 @@ const char * pcPkcs11GetThingName( void )
         0x30, 0x00                                            /*15 */
     };
 #else /* ifdef AMAZON_FREERTOS_ENABLE_UNIT_TESTS */
-
 /** Standard Configuration Structure for ATECC608A devices */
     const uint8_t atecc608_config[] =
     {
