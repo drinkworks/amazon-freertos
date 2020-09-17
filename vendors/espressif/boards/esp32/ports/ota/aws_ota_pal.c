@@ -60,6 +60,11 @@
  */
 #define ECDSA_SIG_SIZE          80
 
+/**
+ * @brief Callback called from prvPAL_CreateFileForRx()
+ */
+typedef void (* _userCreateFileForRxCallback_t)( bool bUseDwFunctions );
+
 typedef struct
 {
     const esp_partition_t * update_partition;
@@ -67,6 +72,7 @@ typedef struct
     esp_ota_handle_t update_handle;
     uint32_t data_write_len;
     bool valid_image;
+    _userCreateFileForRxCallback_t userCreateFileForRx_cb;
 } esp_ota_context_t;
 
 typedef struct
@@ -191,12 +197,27 @@ OTA_Err_t prvPAL_Abort( OTA_FileContext_t * const C )
 /* Attempt to create a new receive file for the file chunks as they come in. */
 OTA_Err_t prvPAL_CreateFileForRx( OTA_FileContext_t * const C )
 {
+    esp_partition_t * update_partition;                                     //`INW
+	bool bUseDwFunctions = false;                                           //`INW
+
     if( ( NULL == C ) || ( NULL == C->pucFilePath ) )
     {
         return kOTA_Err_RxFileCreateFailed;
     }
 
-    const esp_partition_t * update_partition = aws_esp_ota_get_next_update_partition( NULL );
+//     const esp_partition_t * update_partition = aws_esp_ota_get_next_update_partition( NULL );
+    /* If pucFilePath is "/ota" use standard Espressif code, otherwise find the named partition `INW */
+    if( strcmp( ( char * )C->pucFilePath, "/ota" ) == 0 )
+    {
+       update_partition = aws_esp_ota_get_next_update_partition( NULL );
+    }
+    else
+    {
+       // Use Partition Type 0x44 (D) and subType 0x57 (W)
+       ESP_LOGI( TAG, "find_partition(%s)", ( ( char * )C->pucFilePath ) );
+       update_partition = esp_partition_find_first( 0x44, 0x57, ( const char * )C->pucFilePath );
+       bUseDwFunctions = true;
+    }
 
     if( update_partition == NULL )
     {
@@ -207,8 +228,24 @@ OTA_Err_t prvPAL_CreateFileForRx( OTA_FileContext_t * const C )
     ESP_LOGI( TAG, "Writing to partition subtype %d at offset 0x%x",
               update_partition->subtype, update_partition->address );
 
+    /* If user callback is registered, call it with bUseDwFunctions flag */
+    if( NULL != ota_ctx.userCreateFileForRx_cb )
+    {
+    	ESP_LOGI( TAG, "User callback for CreatFileForRx is registered" );
+    	ota_ctx.userCreateFileForRx_cb( bUseDwFunctions );
+    }
+
     esp_ota_handle_t update_handle;
-    esp_err_t err = aws_esp_ota_begin( update_partition, OTA_SIZE_UNKNOWN, &update_handle );
+//`INW    esp_err_t err = aws_esp_ota_begin( update_partition, OTA_SIZE_UNKNOWN, &update_handle );
+    esp_err_t err;
+    if( bUseDwFunctions == false )
+       {
+       err = aws_esp_ota_begin( update_partition, OTA_SIZE_UNKNOWN, &update_handle );
+       }
+    else
+    {
+       err = aws_esp_dw_begin( update_partition, OTA_SIZE_UNKNOWN, &update_handle );
+    }
 
     if( err != ESP_OK )
     {
@@ -629,6 +666,19 @@ static void disable_rtc_wdt()
     ESP_LOGI( TAG, "Disabling RTC hardware watchdog timer" );
     rtc_wdt_disable();
 }
+
+OTA_Err_t prvPAL_RegisterUserCreateFileForRxCallback( _userCreateFileForRxCallback_t handler)
+{
+
+	/* register handler, if handler is valid */
+	if( NULL != handler )
+	{
+		ota_ctx.userCreateFileForRx_cb = handler;
+		ESP_LOGI( TAG, "Registered CreateFileForRx callback" );
+	}
+    return kOTA_Err_None;
+}
+
 
 OTA_Err_t prvPAL_SetPlatformImageState( OTA_ImageState_t eState )
 {

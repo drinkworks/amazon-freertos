@@ -123,6 +123,62 @@ esp_err_t aws_esp_ota_begin(const esp_partition_t *partition, size_t image_size,
     return ESP_OK;
 }
 
+// New function `INW
+/**
+ * Begin an OTA transfer to a non "ota" partition
+ */
+esp_err_t aws_esp_dw_begin(const esp_partition_t *partition, size_t image_size, esp_ota_handle_t *out_handle)
+{
+    ota_ops_entry_t *new_entry;
+    esp_err_t ret = ESP_OK;
+
+    if ((partition == NULL) || (out_handle == NULL)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    partition = esp_partition_verify(partition);
+    if (partition == NULL) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+//    if (!is_ota_partition(partition)) {
+//        return ESP_ERR_INVALID_ARG;
+//    }
+
+//    if (partition == esp_ota_get_running_partition()) {
+//        return ESP_ERR_OTA_PARTITION_CONFLICT;
+//    }
+
+    // If input image size is 0 or OTA_SIZE_UNKNOWN, erase entire partition
+    if ((image_size == 0) || (image_size == OTA_SIZE_UNKNOWN)) {
+        ret = esp_partition_erase_range(partition, 0, partition->size);
+    } else {
+        ret = esp_partition_erase_range(partition, 0, (image_size / SPI_FLASH_SEC_SIZE + 1) * SPI_FLASH_SEC_SIZE);
+    }
+
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    new_entry = (ota_ops_entry_t *) calloc(sizeof(ota_ops_entry_t), 1);
+    if (new_entry == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    LIST_INSERT_HEAD(&s_ota_ops_entries_head, new_entry, entries);
+
+    if ((image_size == 0) || (image_size == OTA_SIZE_UNKNOWN)) {
+        new_entry->erased_size = partition->size;
+    } else {
+        new_entry->erased_size = image_size;
+    }
+
+    new_entry->part = partition;
+    new_entry->handle = ++s_ota_ops_last_handle;
+    *out_handle = new_entry->handle;
+    return ESP_OK;
+}
+
 esp_err_t aws_esp_ota_write(esp_ota_handle_t handle, const void *data, uint32_t offset, size_t size)
 {
     const uint8_t *data_bytes = (const uint8_t *)data;
@@ -145,6 +201,7 @@ esp_err_t aws_esp_ota_write(esp_ota_handle_t handle, const void *data, uint32_t 
                 return ESP_ERR_INVALID_ARG;
             }
 
+            ESP_LOGI(TAG, "esp_partition_write: 0x%08x, 0x%08x, %d", it->part->address, offset, size);         //`INW
             ret = esp_partition_write(it->part, offset, data_bytes, size);
             if(ret == ESP_OK){
                 it->wrote_size += size;

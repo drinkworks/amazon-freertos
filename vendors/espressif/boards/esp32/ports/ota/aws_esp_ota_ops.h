@@ -53,6 +53,7 @@ extern "C"
  *    - ESP_ERR_FLASH_OP_TIMEOUT or ESP_ERR_FLASH_OP_FAIL: Flash write failed.
  */
 esp_err_t aws_esp_ota_begin(const esp_partition_t* partition, size_t image_size, esp_ota_handle_t* out_handle);
+esp_err_t aws_esp_dw_begin(const esp_partition_t* partition, size_t image_size, esp_ota_handle_t* out_handle);         //`INW
 
 /**
  * @brief   Write OTA update data to partition
