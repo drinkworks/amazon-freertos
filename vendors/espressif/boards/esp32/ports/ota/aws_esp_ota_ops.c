@@ -255,6 +255,49 @@ esp_err_t aws_esp_ota_end(esp_ota_handle_t handle)
     return ret;
 }
 
+/**
+ * @brief	End OTA process for secondary Processor
+ */
+esp_err_t aws_esp_dw_end(esp_ota_handle_t handle)
+{
+    ota_ops_entry_t *it;
+    esp_err_t ret = ESP_OK;
+
+    for (it = LIST_FIRST(&s_ota_ops_entries_head); it != NULL; it = LIST_NEXT(it, entries)) {
+        if (it->handle == handle) {
+            break;
+        }
+    }
+
+    if (it == NULL) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    /* 'it' holds the ota_ops_entry_t for 'handle' */
+
+    // esp_ota_end() is only valid if some data was written to this handle
+    if ((it->erased_size == 0) || (it->wrote_size == 0)) {
+        ret = ESP_ERR_INVALID_ARG;
+        goto cleanup;
+    }
+
+    esp_image_metadata_t data;
+    const esp_partition_pos_t part_pos = {
+      .offset = it->part->address,
+      .size = it->part->size,
+    };
+
+//    if (esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, &data) != ESP_OK) {
+//        ret = ESP_ERR_OTA_VALIDATE_FAILED;
+//        goto cleanup;
+//    }
+
+ cleanup:
+    LIST_REMOVE(it, entries);
+    free(it);
+    return ret;
+}
+
 static uint32_t ota_select_crc(const ota_select *s)
 {
     return bootloader_common_ota_select_crc(s);

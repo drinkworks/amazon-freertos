@@ -44,6 +44,11 @@
 #include "mbedtls/bignum.h"
 #include "mbedtls/base64.h"
 
+#ifdef SECONDARY
+/* PAL Interface for Secondary Processor Update */
+#include "aws_ota_secondary_pal.h"
+#endif
+
 #define kOTA_HalfSecondDelay    pdMS_TO_TICKS( 500UL )
 #define ECDSA_INTEGER_LEN       32
 
@@ -60,10 +65,12 @@
  */
 #define ECDSA_SIG_SIZE          80
 
+#ifdef	OLD
 /**
  * @brief Callback called from prvPAL_CreateFileForRx()
  */
 typedef void (* _userCreateFileForRxCallback_t)( bool bUseDwFunctions );
+#endif
 
 typedef struct
 {
@@ -72,7 +79,12 @@ typedef struct
     esp_ota_handle_t update_handle;
     uint32_t data_write_len;
     bool valid_image;
+#ifdef	OLD
     _userCreateFileForRxCallback_t userCreateFileForRx_cb;
+#endif
+#ifdef	SECONDARY
+    OTA_Secondary_PAL_Callbacks_t	*secondary;
+#endif
 } esp_ota_context_t;
 
 typedef struct
@@ -197,14 +209,53 @@ OTA_Err_t prvPAL_Abort( OTA_FileContext_t * const C )
 /* Attempt to create a new receive file for the file chunks as they come in. */
 OTA_Err_t prvPAL_CreateFileForRx( OTA_FileContext_t * const C )
 {
+    esp_err_t err;
     esp_partition_t * update_partition;                                     //`INW
-	bool bUseDwFunctions = false;                                           //`INW
+	esp_ota_handle_t update_handle;
 
     if( ( NULL == C ) || ( NULL == C->pucFilePath ) )
     {
         return kOTA_Err_RxFileCreateFailed;
     }
 
+    if( C->ulServerFileID == 0 )
+    {
+    	/* FileId 0 - Update Communications Processor (self) */
+    	update_partition = aws_esp_ota_get_next_update_partition( NULL );
+
+		if( update_partition == NULL )
+		{
+			ESP_LOGE( TAG, "failed to find update partition" );
+			return kOTA_Err_RxFileCreateFailed;
+		}
+
+		ESP_LOGI( TAG, "Writing to partition subtype %d at offset 0x%x",
+				  update_partition->subtype, update_partition->address );
+
+		err = aws_esp_ota_begin( update_partition, OTA_SIZE_UNKNOWN, &update_handle );
+
+    }
+    else
+    {
+    	/* Update secondary Processor */
+    	/* Use Partition Type 0x44 (D) and subType 0x57 (W) */
+    	ESP_LOGI( TAG, "find_partition(%s)", ( ( char * )C->pucFilePath ) );
+    	update_partition = esp_partition_find_first( 0x44, 0x57, ( const char * )C->pucFilePath );
+
+		if( update_partition == NULL )
+		{
+			ESP_LOGE( TAG, "failed to find update partition" );
+			return kOTA_Err_RxFileCreateFailed;
+		}
+
+		ESP_LOGI( TAG, "Writing to partition subtype %d at offset 0x%x",
+				  update_partition->subtype, update_partition->address );
+
+
+		err = aws_esp_dw_begin( update_partition, OTA_SIZE_UNKNOWN, &update_handle );
+    }
+
+#ifdef	DEPRECIATED
 //     const esp_partition_t * update_partition = aws_esp_ota_get_next_update_partition( NULL );
     /* If pucFilePath is "/ota" use standard Espressif code, otherwise find the named partition `INW */
     if( strcmp( ( char * )C->pucFilePath, "/ota" ) == 0 )
@@ -246,6 +297,7 @@ OTA_Err_t prvPAL_CreateFileForRx( OTA_FileContext_t * const C )
     {
        err = aws_esp_dw_begin( update_partition, OTA_SIZE_UNKNOWN, &update_handle );
     }
+#endif
 
     if( err != ESP_OK )
     {
@@ -567,23 +619,38 @@ OTA_Err_t prvPAL_ActivateNewImage( void )
 {
     if( ota_ctx.cur_ota != NULL )
     {
-        if( aws_esp_ota_end( ota_ctx.update_handle ) != ESP_OK )
-        {
-            ESP_LOGE( TAG, "aws_esp_ota_end failed!" );
-            esp_partition_erase_range( ota_ctx.update_partition, 0, ota_ctx.update_partition->size );
-            prvPAL_ResetDevice();
-        }
+    	if( ota_ctx.cur_ota->ulServerFileID == 0 )
+    	{
+    		/* Communications Processor (self) */
+			if( aws_esp_ota_end( ota_ctx.update_handle ) != ESP_OK )
+			{
+				ESP_LOGE( TAG, "aws_esp_ota_end failed!" );
+				esp_partition_erase_range( ota_ctx.update_partition, 0, ota_ctx.update_partition->size );
+				prvPAL_ResetDevice();
+			}
 
-        esp_err_t err = aws_esp_ota_set_boot_partition( ota_ctx.update_partition );
+			esp_err_t err = aws_esp_ota_set_boot_partition( ota_ctx.update_partition );
 
-        if( err != ESP_OK )
-        {
-            ESP_LOGE( TAG, "aws_esp_ota_set_boot_partition failed (%d)!", err );
-            esp_partition_erase_range( ota_ctx.update_partition, 0, ota_ctx.update_partition->size );
-            _esp_ota_ctx_clear( &ota_ctx );
-        }
+			if( err != ESP_OK )
+			{
+				ESP_LOGE( TAG, "aws_esp_ota_set_boot_partition failed (%d)!", err );
+				esp_partition_erase_range( ota_ctx.update_partition, 0, ota_ctx.update_partition->size );
+				_esp_ota_ctx_clear( &ota_ctx );
+			}
 
-        prvPAL_ResetDevice();
+			prvPAL_ResetDevice();
+    	}
+    	else
+    	{
+    		/* Secondary Processor */
+			if( aws_esp_dw_end( ota_ctx.update_handle ) != ESP_OK )
+			{
+				ESP_LOGE( TAG, "aws_esp_dw_end failed!" );
+				esp_partition_erase_range( ota_ctx.update_partition, 0, ota_ctx.update_partition->size );
+			}
+		    _esp_ota_ctx_clear( &ota_ctx );
+		    return kOTA_Err_None;
+    	}
     }
 
     _esp_ota_ctx_clear( &ota_ctx );
@@ -618,12 +685,33 @@ int16_t prvPAL_WriteBlock( OTA_FileContext_t * const C,
     return iBlockSize;
 }
 
+#ifdef SECONDARY
+OTA_PAL_ImageState_t prvPAL_GetSecondaryImageState( uint32_t ulServerFileID )
+{
+    ESP_LOGI( TAG, "%s", __func__ );
+    if( ota_ctx.secondary->xGetPlatformImageState != NULL )
+    {
+    	ESP_LOGI( TAG, "Secondary PAL callback" );
+    	return ota_ctx.secondary->xGetPlatformImageState( ulServerFileID );
+    }
+    return eOTA_PAL_ImageState_Invalid;
+}
+#endif
+
 OTA_PAL_ImageState_t prvPAL_GetPlatformImageState()
 {
     OTA_PAL_ImageState_t eImageState = eOTA_PAL_ImageState_Unknown;
     uint32_t ota_flags;
 
     ESP_LOGI( TAG, "%s", __func__ );
+
+#ifdef SECONDARY
+   /* Get Secondary Processor Update state handled separately */
+	if( ( ota_ctx.cur_ota != NULL ) && ( ota_ctx.cur_ota->ulServerFileID != 0 ) )
+	{
+		return prvPAL_GetSecondaryImageState( ota_ctx.cur_ota->ulServerFileID );
+	}
+#endif
 
     if( ( ota_ctx.cur_ota != NULL ) && ( ota_ctx.data_write_len != 0 ) )
     {
@@ -667,6 +755,7 @@ static void disable_rtc_wdt()
     rtc_wdt_disable();
 }
 
+#ifdef	OLD
 OTA_Err_t prvPAL_RegisterUserCreateFileForRxCallback( _userCreateFileForRxCallback_t handler)
 {
 
@@ -678,7 +767,56 @@ OTA_Err_t prvPAL_RegisterUserCreateFileForRxCallback( _userCreateFileForRxCallba
 	}
     return kOTA_Err_None;
 }
+#endif
 
+#ifdef SECONDARY
+OTA_Err_t prvPAL_RegisterSecondaryPAL( OTA_Secondary_PAL_Callbacks_t *callbacks )
+{
+
+	/* register callbacks, if callbacks pointer is valid */
+	if( NULL != callbacks )
+	{
+		ota_ctx.secondary = callbacks;
+		ESP_LOGI( TAG, "Registered Secondary PAL callbacks" );
+	}
+    return kOTA_Err_None;
+}
+
+OTA_Err_t prvPAL_SetSecondaryImageState(  uint32_t ulServerFileID, OTA_ImageState_t eState )
+{
+    ESP_LOGI( TAG, "%s, %d", __func__, eState );
+
+    switch( eState )
+    {
+        case eOTA_ImageState_Accepted:
+            ESP_LOGI( TAG, "Set image as valid one!" );
+            break;
+
+        case eOTA_ImageState_Rejected:
+            ESP_LOGW( TAG, "Set image as invalid!" );
+            break;
+
+        case eOTA_ImageState_Aborted:
+            ESP_LOGW( TAG, "Set image as aborted!" );
+            break;
+
+        case eOTA_ImageState_Testing:
+            ESP_LOGW( TAG, "Set image as testing!" );
+            break;
+
+        default:
+            ESP_LOGW( TAG, "Set image invalid state!" );
+            break;
+    }
+
+    if( ota_ctx.secondary->xSetPlatformImageState != NULL )
+    {
+    	ESP_LOGI( TAG, "Secondary PAL callback" );
+    	return ota_ctx.secondary->xSetPlatformImageState( ulServerFileID, eState );
+    }
+    return eOTA_PAL_ImageState_Invalid;
+}
+#endif
 
 OTA_Err_t prvPAL_SetPlatformImageState( OTA_ImageState_t eState )
 {
@@ -686,6 +824,14 @@ OTA_Err_t prvPAL_SetPlatformImageState( OTA_ImageState_t eState )
     int state;
 
     ESP_LOGI( TAG, "%s, %d", __func__, eState );
+
+#ifdef SECONDARY
+    /* Set Secondary Processor Update state handled separately */
+	if( ( ota_ctx.cur_ota != NULL ) && ( ota_ctx.cur_ota->ulServerFileID != 0 ) )
+	{
+		return prvPAL_SetSecondaryImageState( ota_ctx.cur_ota->ulServerFileID, eState );
+	}
+#endif
 
     switch( eState )
     {

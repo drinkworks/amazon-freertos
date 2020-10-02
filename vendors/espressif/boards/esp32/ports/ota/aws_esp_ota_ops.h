@@ -91,6 +91,7 @@ esp_err_t aws_esp_ota_write(esp_ota_handle_t handle, const void* data, uint32_t 
  *    - ESP_ERR_INVALID_STATE: If flash encryption is enabled, this result indicates an internal error writing the final encrypted bytes to flash.
  */
 esp_err_t aws_esp_ota_end(esp_ota_handle_t handle);
+esp_err_t aws_esp_dw_end(esp_ota_handle_t handle);
 
 /**
  * @brief Configure OTA data for a new boot partition
