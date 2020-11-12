@@ -2263,6 +2263,8 @@ static OTA_FileContext_t * prvParseJobDoc( const char * pcJSON,
                 /* Job is malformed - return an error */
                 eErr = eOTA_JobParseErr_NonConformingJobDoc;
             }
+            /* Clear the FileID, so secondary processors are not targetted with eOTA_ImageState_Aborted */
+            xOTA_Agent.ulServerFileID = 0;
         }
     }
 
