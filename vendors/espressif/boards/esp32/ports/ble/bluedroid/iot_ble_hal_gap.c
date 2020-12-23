@@ -1034,3 +1034,41 @@ const void * prvGetLeAdapter()
 {
     return &xBTLeAdapter;
 }
+
+/*-----------------------------------------------------------*/
+static esp_ble_adv_filter_t saved_adv_filter_policy;
+static esp_ble_adv_type_t saved_adv_type;
+static bool bUndirectedSaved = false;
+
+/**
+ * @brief	Enable/Disable Directed Advertising
+ *
+ * Default configuration is for Indirect Advertising.
+ * Calling this function with <i>true</i> saves the current settings and changes to Directed Advertising.
+ * Calling this function with <i>false</i> restores the previously saved settings.
+ *
+ * Logic prevents multiple saves/restores.
+ */
+void BTSetDirectedAdvertising( bool bDirected )
+{
+	if( bDirected && !bUndirectedSaved )
+	{
+		/* save current settings */
+		saved_adv_filter_policy = xAdv_params.adv_filter_policy;
+		saved_adv_type = xAdv_params.adv_type;
+		bUndirectedSaved = true;
+
+		/* new settings for directed advertising */
+		xAdv_params.adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_WLST;
+		xAdv_params.adv_type = ADV_TYPE_DIRECT_IND_HIGH;
+		printf( "***>>> Directed\n" );
+	}
+	else if( !bDirected && bUndirectedSaved )
+	{
+		/* restore saved settings */
+		xAdv_params.adv_filter_policy = saved_adv_filter_policy;
+		xAdv_params.adv_type = saved_adv_type;
+		bUndirectedSaved = false;
+		printf( "***>>> Undirected\n" );
+	}
+}

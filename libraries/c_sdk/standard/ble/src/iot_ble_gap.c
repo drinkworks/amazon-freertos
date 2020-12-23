@@ -1043,3 +1043,36 @@ BTStatus_t IotBle_UnRegisterEventCb( IotBleEvents_t event,
 
     return status;
 }
+
+/**
+ * @brief	Set Bondable
+ *
+ * This is a hack to enable/disable bonding of peer devices.
+ * Default is to set configuration to Display/YesNo and to reject connection requests.
+ * When set to bondable, change configuration to NoIO, this will allow any device to bond
+ *
+ * FIXME - block attempts to change property if BLE is not initialized
+ */
+static bool bxIsBondable = false;
+
+BTStatus_t IotBle_setBondable( bool bBondable )
+{
+	BTIOtypes_t ioCap;
+	BTStatus_t status = eBTStatusSuccess;
+
+	if( bBondable && !bxIsBondable )
+	{
+		printf( "***>>> No I/O\n" );
+		ioCap = eBTIONone;
+        status = _setDeviceProperty( eBTpropertyIO, &ioCap, sizeof( BTIOtypes_t ) );
+        bxIsBondable = true;
+	}
+	else if( !bBondable && bxIsBondable )
+	{
+		printf( "***>>> Display/YesNo\n" );
+		ioCap = eBTIODisplayYesNo;
+        status = _setDeviceProperty( eBTpropertyIO, &ioCap, sizeof( BTIOtypes_t ) );
+        bxIsBondable = false;
+	}
+	return status;
+}
