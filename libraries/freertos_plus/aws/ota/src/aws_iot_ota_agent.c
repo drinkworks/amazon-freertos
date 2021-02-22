@@ -413,11 +413,13 @@ static BaseType_t prvStartSelfTestTimer( void )
         /* Common check for whether the timer was started or not. It should be impossible to not start. */
         if( xTimerStarted == pdTRUE )
         {
-            OTA_LOG_L1( "[%s] Starting %s timer.\r\n", OTA_METHOD_NAME, pcTimerName );
+//            OTA_LOG_L1( "[%s] Starting %s timer.\r\n", OTA_METHOD_NAME, pcTimerName );
+            printf( "[%s] Starting %s timer.\r\n", OTA_METHOD_NAME, pcTimerName );
         }
         else
         {
-            OTA_LOG_L1( "[%s] ERROR: failed to reset/start %s timer.\r\n", OTA_METHOD_NAME, pcTimerName );
+//            OTA_LOG_L1( "[%s] ERROR: failed to reset/start %s timer.\r\n", OTA_METHOD_NAME, pcTimerName );
+            printf( "[%s] ERROR: failed to reset/start %s timer.\r\n", OTA_METHOD_NAME, pcTimerName );
         }
     }
 
@@ -795,9 +797,10 @@ static OTA_Err_t prvStartHandler( OTA_EventData_t * pxEventData )
     ( void ) pxEventData;
     OTA_Err_t xReturn = kOTA_Err_None;
     OTA_EventMsg_t xEventMsg = { 0 };
-
+    printf(" [%s] - start\n", OTA_METHOD_NAME );
     /* Start self-test timer, if platform is in self-test. */
     prvStartSelfTestTimer();
+    printf(" [%s] - after StartSelfTimer\n", OTA_METHOD_NAME );
 
     /* Send event to OTA task to get job document. */
     xEventMsg.xEventId = eOTA_AgentEvent_RequestJobDocument;
@@ -807,6 +810,7 @@ static OTA_Err_t prvStartHandler( OTA_EventData_t * pxEventData )
         xReturn = kOTA_Err_EventQueueSendFailed;
     }
 
+    printf(" [%s] - return\n", OTA_METHOD_NAME );
     return xReturn;
 }
 
@@ -2751,7 +2755,8 @@ static void prvExecuteHandler( uint32_t index,
 
         if( xErr == kOTA_Err_None )
         {
-            OTA_LOG_L1( "[%s] Called handler. Current State [%s] Event [%s] New state [%s] \n",
+//            OTA_LOG_L1( "[%s] Called handler. Current State [%s] Event [%s] New state [%s] \n",
+            printf( "[%s] Called handler. Current State [%s] Event [%s] New state [%s] \n",
                         OTA_METHOD_NAME,
                         pcOTA_AgentState_Strings[ xOTA_Agent.eState ],
                         pcOTA_Event_Strings[ pxEventMsg->xEventId ],
@@ -2764,7 +2769,8 @@ static void prvExecuteHandler( uint32_t index,
         }
         else
         {
-            OTA_LOG_L1( "[%s] Handler failed. Current State [%s] Event  [%s] Error Code [%d] \n",
+//            OTA_LOG_L1( "[%s] Handler failed. Current State [%s] Event  [%s] Error Code [%d] \n",
+            printf( "[%s] Handler failed. Current State [%s] Event  [%s] Error Code [%d] \n",
                         OTA_METHOD_NAME,
                         pcOTA_AgentState_Strings[ xOTA_Agent.eState ],
                         pcOTA_Event_Strings[ pxEventMsg->xEventId ],
@@ -2783,6 +2789,11 @@ static void prvOTAAgentTask( void * pvUnused )
     uint32_t ulTransitionTableLen = sizeof( OTATransitionTable ) / sizeof( OTATransitionTable[ 0 ] );
     uint32_t i = 0;
 
+    if( ( ( uint32_t )&i & ( uint32_t )0xFFC00000 ) == ( uint32_t )0x3F800000 )
+    {
+    	printf( "############################################################################\n" );
+    	printf( "prvOTAAgentTask() stack allocated to external RAM, anticipate TASK_WDT Reset\n" );
+    }
     /*
      * OTA Agent is ready to receive and process events so update the state to ready.
      */
@@ -2804,9 +2815,13 @@ static void prvOTAAgentTask( void * pvUnused )
                       ( OTATransitionTable[ i ].xCurrentState == eOTA_AgentState_All ) ) &&
                     ( OTATransitionTable[ i ].xEventId == xEventMsg.xEventId ) )
                 {
-                    OTA_LOG_L3( "[%s] , State matched [%s],  Event matched  [%s]\n",
+//                    OTA_LOG_L3( "[%s] , State matched [%s],  Event matched  [%s]\n",
+//                               OTA_METHOD_NAME,
+//                                pcOTA_AgentState_Strings[ i ],
+//                                pcOTA_Event_Strings[ i ] );
+                    printf( "[%s] , State matched [%s],  Event matched  [%s]\n",
                                 OTA_METHOD_NAME,
-                                pcOTA_AgentState_Strings[ i ]
+                                pcOTA_AgentState_Strings[ i ],
                                 pcOTA_Event_Strings[ i ] );
 
                     /*
@@ -2825,6 +2840,7 @@ static void prvOTAAgentTask( void * pvUnused )
                 prvHandleUnexpectedEvents( &xEventMsg );
             }
         }
+        printf( "[%s] loop\n", OTA_METHOD_NAME);
     }
 }
 
@@ -2890,10 +2906,12 @@ static BaseType_t prvStartOTAAgentTask( void * pvConnectionContext,
      */
     if( xReturn == pdPASS )
     {
+    	printf("OTA Agent Task created - 1\n");
         while( ( xTicksToWait-- > 0U ) && ( xOTA_Agent.eState != eOTA_AgentState_Ready ) )
         {
             vTaskDelay( 1 );
         }
+    	printf("OTA Agent Task created - 2\n");
     }
 
     return xReturn;
@@ -3019,13 +3037,15 @@ OTA_State_t OTA_AgentInit_internal( void * pvConnectionContext,
              */
             ( void ) memcpy( xOTA_Agent.pcThingName, pucThingName, ulStrLen + 1UL ); /* Include zero terminator when saving the Thing name. */
         }
-
+        printf( "Before: prvStartOTAAgentTask\n" );
         xReturn = prvStartOTAAgentTask( pvConnectionContext, xTicksToWait );
+        printf( "After: prvStartOTAAgentTask\n" );
     }
 
     if( xOTA_Agent.eState == eOTA_AgentState_Ready )
     {
-        OTA_LOG_L1( "[%s] OTA Task is Ready.\r\n", OTA_METHOD_NAME );
+//        OTA_LOG_L1( "[%s] OTA Task is Ready.\r\n", OTA_METHOD_NAME );
+        printf( "[%s] OTA Task is Ready.\r\n", OTA_METHOD_NAME );
 
         /*
          * OTA agent is ready so send event to start update process.
@@ -3035,12 +3055,14 @@ OTA_State_t OTA_AgentInit_internal( void * pvConnectionContext,
         /* Send signal to OTA task. */
         if( !OTA_SignalEvent( &xEventMsg ) )
         {
-            OTA_LOG_L1( "[%s] Failed to signal the OTA agent to start.", OTA_METHOD_NAME );
+//            OTA_LOG_L1( "[%s] Failed to signal the OTA agent to start.", OTA_METHOD_NAME );
+            printf( "[%s] Failed to signal the OTA agent to start.", OTA_METHOD_NAME );
         }
     }
     else
     {
-        OTA_LOG_L1( "[%s] Failed to start the OTA Task, Error Code :%08x  Queue:%08x\r\n", OTA_METHOD_NAME, xReturn );
+//        OTA_LOG_L1( "[%s] Failed to start the OTA Task, Error Code :%08x  Queue:%08x\r\n", OTA_METHOD_NAME, xReturn );
+        printf( "[%s] Failed to start the OTA Task, Error Code :%08x\r\n", OTA_METHOD_NAME, xReturn );
 
         xOTA_Agent.eState = eOTA_AgentState_Stopped;
     }

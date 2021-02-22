@@ -419,9 +419,24 @@ static const esp_partition_t *_esp_get_otadata_partition(uint32_t *offset, ota_s
     const void *result = NULL;
     ota_select s_ota_select[2];
 
+    if( ( ( uint32_t )&ota_data_map & ( uint32_t )0xFFC00000 ) == ( uint32_t )0x3F800000 )
+    {
+    	printf( "_esp_get_otadata_partition() stack allocated to external RAM, anticipate TASK_WDT Reset\n" );
+    }
+
     find_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_OTA, NULL);
     if (find_partition != NULL) {
+    	printf( "  found partition, address = %08X, size = %d, label = %s\n", find_partition->address, find_partition->size, find_partition->label );
+    	printf( "    &result = %p, &ota_data_map = %p\n", &result, &ota_data_map );
+#define	DIRECT_SPI
+#ifdef	DIRECT_SPI
+    	/* Patch - read SPI Flash directly */
+        spi_flash_read( find_partition->address,                      &s_ota_select[0], sizeof(ota_select) );
+        spi_flash_read( find_partition->address + SPI_FLASH_SEC_SIZE, &s_ota_select[1], sizeof(ota_select) );
+        printf( "  After direct read of otadata\n" );
+#else
         ret = esp_partition_mmap(find_partition, 0, find_partition->size, SPI_FLASH_MMAP_DATA, &result, &ota_data_map);
+        printf( "  after esp_partition_mmap()\n" );
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "mmap failed %d", ret);
             return NULL;
@@ -430,6 +445,7 @@ static const esp_partition_t *_esp_get_otadata_partition(uint32_t *offset, ota_s
             memcpy(&s_ota_select[1], result + SPI_FLASH_SEC_SIZE, sizeof(ota_select));
             spi_flash_munmap(ota_data_map);
         }
+#endif
         uint32_t gen_0_seq = ota_select_valid(&s_ota_select[0]) ? s_ota_select[0].ota_seq : 0;
         uint32_t gen_1_seq = ota_select_valid(&s_ota_select[1]) ? s_ota_select[1].ota_seq : 0;
         if (gen_0_seq == 0 && gen_1_seq == 0) {
