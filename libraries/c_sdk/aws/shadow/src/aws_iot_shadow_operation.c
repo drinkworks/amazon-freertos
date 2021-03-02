@@ -267,6 +267,12 @@ static void _commonOperationCallback( _shadowOperationType_t type,
         IotLogWarn( "Shadow %s callback received an unknown operation.",
                     _pAwsIotShadowOperationNames[ type ] );
 
+        printf( "Received Shadow response on topic %.*s, payload: %.*s\n",
+                     pMessage->u.message.info.topicNameLength,
+                     pMessage->u.message.info.pTopicName,
+					 pMessage->u.message.info.payloadLength,
+					 (uint8_t *) pMessage->u.message.info.pPayload);
+
         return;
     }
     else

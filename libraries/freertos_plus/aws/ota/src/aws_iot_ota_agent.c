@@ -2802,7 +2802,7 @@ static void prvOTAAgentTask( void * pvUnused )
     for( ; ; )
     {
         /*
-         * Receive the next event form the OTA event queue to process.
+         * Receive the next event from the OTA event queue to process.
          */
         if( xQueueReceive( xOTA_Agent.xOTA_EventQueue, &xEventMsg, portMAX_DELAY ) == pdTRUE )
         {
@@ -2819,10 +2819,10 @@ static void prvOTAAgentTask( void * pvUnused )
 //                               OTA_METHOD_NAME,
 //                                pcOTA_AgentState_Strings[ i ],
 //                                pcOTA_Event_Strings[ i ] );
-                    printf( "[%s] , State matched [%s],  Event matched  [%s]\n",
-                                OTA_METHOD_NAME,
-                                pcOTA_AgentState_Strings[ i ],
-                                pcOTA_Event_Strings[ i ] );
+//                    printf( "[%s] , State matched [%s],  Event matched  [%s]\n",
+//                                OTA_METHOD_NAME,
+//                                pcOTA_AgentState_Strings[ i ],
+//                                pcOTA_Event_Strings[ i ] );
 
                     /*
                      * Execute the handler function.
