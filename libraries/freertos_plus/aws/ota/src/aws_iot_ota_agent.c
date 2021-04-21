@@ -2782,6 +2782,14 @@ static void prvOTAAgentTask( void * pvUnused )
     uint32_t ulTransitionTableLen = sizeof( OTATransitionTable ) / sizeof( OTATransitionTable[ 0 ] );
     uint32_t i = 0;
 
+/*
+    if( ( ( uint32_t )&i & ( uint32_t )0xFFC00000 ) == ( uint32_t )0x3F800000 )
+    {
+    	printf( "############################################################################\n" );
+    	printf( "prvOTAAgentTask() stack allocated to external RAM, anticipate TASK_WDT Reset\n" );
+    }
+*/
+
     /*
      * OTA Agent is ready to receive and process events so update the state to ready.
      */
